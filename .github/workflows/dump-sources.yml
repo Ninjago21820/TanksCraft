@@ -1,0 +1,75 @@
+name: Dump vanilla sources
+
+# Extrait les sources Minecraft décompilées (via les caches NeoFormRuntime de
+# ModDevGradle) pour référence sur la branche ci-sources.
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "dump.trigger"
+      - ".github/workflows/dump-sources.yml"
+
+concurrency:
+  group: dump-sources
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
+
+      - name: Populate NeoForm caches
+        run: ./gradlew compileJava --no-daemon -q || true
+
+      - name: Locate and extract sources
+        run: |
+          mkdir -p extracted
+          FOUND=""
+          for j in $(find "$HOME/.gradle" build -name "*.jar" 2>/dev/null); do
+            if unzip -l "$j" 2>/dev/null | grep -q "net/minecraft/client/model/geom/ModelPart.java"; then
+              echo "Sources trouvés dans: $j"
+              FOUND="$j"
+              break
+            fi
+          done
+          if [ -z "$FOUND" ]; then
+            echo "Aucun jar de sources trouvé — listing des caches :"
+            find "$HOME/.gradle/caches" -maxdepth 3 -type d 2>/dev/null | head -40
+            find build -name "*.jar" 2>/dev/null | head -20
+            exit 1
+          fi
+          unzip -o "$FOUND" \
+            "net/minecraft/client/model/geom/ModelPart.java" \
+            "net/minecraft/client/model/geom/builders/*.java" \
+            "net/minecraft/client/gui/screens/inventory/InventoryScreen.java" \
+            "net/minecraft/client/renderer/entity/LivingEntityRenderer.java" \
+            "net/minecraft/client/renderer/entity/EntityRenderDispatcher.java" \
+            "net/minecraft/client/renderer/entity/EntityRenderer.java" \
+            -d extracted || true
+          find extracted -name "*.java" | head -30
+
+      - name: Publish to ci-sources branch
+        if: always()
+        run: |
+          git config --global user.name "ci-bot"
+          git config --global user.email "ci-bot@users.noreply.github.com"
+          rm -rf /tmp/ci-sources && mkdir -p /tmp/ci-sources && cd /tmp/ci-sources
+          git init -q .
+          cp -r "$GITHUB_WORKSPACE/extracted/"* . 2>/dev/null || echo "VIDE" > VIDE.txt
+          git add -A
+          git commit -qm "sources $GITHUB_SHA"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" HEAD:refs/heads/ci-sources
