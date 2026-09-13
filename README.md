@@ -14,12 +14,12 @@
 
 Dès le lancement du jeu, le menu titre vanilla disparaît au profit du hangar :
 
-- **Char 3D animé** au centre de la scène, modèle paramétrique (coque, chenilles, tourelle, canon, frein de bouche, cupule) avec texture de camouflage propre à chaque nation ;
+- **Char 3D animé** au centre-gauche de la scène (façon WoT moderne), modèle paramétrique (coque, chenilles, tourelle, canon, frein de bouche, cupule) avec texture de camouflage propre à chaque nation ;
 - **Rotation à la souris** (glisser) et **zoom molette**, comme dans le garage WoT ;
-- **Carrousel de chars** en bas : 10 chars de 5 nations (France, Allemagne, URSS, États-Unis, Royaume-Uni), tiers I à VII, classes LT / MT / HT / TD ;
-- **Fiche technique** à gauche : puissance de feu, mobilité, blindage, camouflage, portée de vue, PDV, dégâts, vitesse, rechargement ;
+- **Carrousel compact pleine largeur** en bas : 10 chars de 5 nations (France, Allemagne, URSS, États-Unis, Royaume-Uni), tiers I à VII, classes LT / MT / HT / TD — chaque carte embarque son **mini-rendu 3D**, le tier en chiffres romains et le badge de classe ;
+- **Fiche technique à droite** (anthracite + or) : puissance de feu, mobilité, blindage, camouflage, portée de vue, PDV, dégâts, vitesse, rechargement ;
 - **Devises** en haut à droite (crédits, or, XP libre) et profil du commandant en haut à gauche ;
-- **Grand bouton « AU COMBAT ! »** qui ouvre la sélection de monde, plus Multijoueur, Options, Mods et Quitter ;
+- **Grand bouton rouge « AU COMBAT ! »** en bas à droite (chamfreiné, bordure or), qui ouvre la sélection de monde, plus Multijoueur, Options, Mods et Quitter ;
 - Le char sélectionné est **persisté** dans `config/tankscraft-garage.json`.
 
 ## ⚔️ Le gameplay
