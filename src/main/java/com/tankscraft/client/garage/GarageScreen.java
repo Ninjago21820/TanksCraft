@@ -442,7 +442,7 @@ public class GarageScreen extends Screen {
         g.fill((int) anchorX - halfW, (int) anchorY - 2, (int) anchorX + halfW, (int) anchorY + 2, 0x50000000);
         g.fill((int) anchorX - (int) (halfW * 0.8F), (int) anchorY - 1, (int) anchorX + (int) (halfW * 0.8F), (int) anchorY + 1, 0x50000000);
 
-        float ppb = (this.height * 0.5F * this.renderZoom) / 1.75F;
+        float ppb = (this.height * 0.5F * this.renderZoom) / 3.0F;
         float time = (net.minecraft.Util.getMillis() % 100000L) / 1000.0F;
         float turretYaw = Mth.sin(time * 0.6F) * 20.0F;
         float gunPitch = 3.0F + Mth.sin(time * 0.4F) * 2.0F;

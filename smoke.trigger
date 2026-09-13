@@ -7,3 +7,4 @@ Refonte garage WoT moderne: Sun Sep 13 16:19:15 UTC 2026
 Relance (z=400): Sun Sep 13 16:28:54 UTC 2026
 renderBackground no-op 19:26:05
 renderBackground no-op 19:47:31
+taille vedette 19:47:43
