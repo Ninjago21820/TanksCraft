@@ -34,6 +34,11 @@ neoForge {
             if (project.hasProperty('autoshot')) {
                 systemProperty 'tankscraft.autoshot', 'true'
                 systemProperty 'tankscraft.autoshot.path', layout.buildDirectory.file('autoshot.png').get().asFile.absolutePath
+                // petite fenêtre : le rendu logiciel llvmpipe (CI) va beaucoup plus vite
+                programArgument '--width'
+                programArgument '960'
+                programArgument '--height'
+                programArgument '540'
             }
         }
 

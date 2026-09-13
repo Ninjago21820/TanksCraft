@@ -32,8 +32,18 @@ def write_png(path, w, h, get_px):
     raw = bytearray()
     for y in range(h):
         raw.append(0)  # filter none
+        row = bytearray()
         for x in range(w):
-            raw.extend(get_px(x, y))
+            c = get_px(x, y)
+            if c is None:
+                c = (0, 0, 0, 0)
+            if len(c) == 3:
+                c = (c[0], c[1], c[2], 255)
+            assert len(c) == 4, "pixel RGBA attendu à (%d,%d) : %r" % (x, y, c)
+            row.extend(c)
+        if len(row) != w * 4:
+            raise AssertionError("ligne %d : %d octets au lieu de %d" % (y, len(row), w * 4))
+        raw.extend(row)
     def chunk(tag, data):
         c = struct.pack(">I", len(data)) + tag + data
         return c + struct.pack(">I", zlib.crc32(tag + data) & 0xFFFFFFFF)

@@ -82,7 +82,7 @@ public class GarageScreen extends Screen {
 
     /** Capture automatique du garage (CI) : -Dtankscraft.autoshot=true */
     private static final boolean AUTOSHOT = Boolean.getBoolean("tankscraft.autoshot");
-    private int autoshotCountdown = AUTOSHOT ? 60 : -1;
+    private int autoshotCountdown = AUTOSHOT ? 30 : -1;
 
     public GarageScreen() {
         super(Component.translatable("screen.tankscraft.garage"));
