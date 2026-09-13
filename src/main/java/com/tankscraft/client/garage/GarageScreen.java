@@ -80,6 +80,10 @@ public class GarageScreen extends Screen {
     private boolean dragging = false;
     private double lastMouseX, lastMouseY;
 
+    /** Capture automatique du garage (CI) : -Dtankscraft.autoshot=true */
+    private static final boolean AUTOSHOT = Boolean.getBoolean("tankscraft.autoshot");
+    private int autoshotCountdown = AUTOSHOT ? 60 : -1;
+
     public GarageScreen() {
         super(Component.translatable("screen.tankscraft.garage"));
     }
@@ -141,6 +145,20 @@ public class GarageScreen extends Screen {
         super.render(g, mouseX, mouseY, partialTick);
 
         pose.popPose();
+
+        if (this.autoshotCountdown >= 0 && this.autoshotCountdown-- == 0) {
+            this.captureAutoshot();
+        }
+    }
+
+    /** Screenshot du garage puis fermeture du jeu (utilisé par la CI). */
+    private void captureAutoshot() {
+        try {
+            net.minecraft.client.Screenshot.takeScreenshot(this.minecraft.getMainRenderTarget())
+                    .writeFile(new java.io.File(System.getProperty("tankscraft.autoshot.path", "autoshot.png")));
+        } catch (Exception ignored) {
+        }
+        this.minecraft.stop();
     }
 
     private void renderHangarBackground(GuiGraphics g) {
@@ -177,6 +195,10 @@ public class GarageScreen extends Screen {
         pose.mulPose(Axis.XP.rotationDegrees(this.renderPitch));
         pose.mulPose(Axis.YP.rotationDegrees(180.0F - this.renderYaw));
         pose.translate(0.0F, -0.8F, 0.0F);
+
+        // compression de la profondeur : invisible en projection ortho,
+        // mais borne le char sous le plan de l'UI (z=400) quel que soit le zoom
+        pose.scale(1.0F, 1.0F, 0.3F);
 
         // passage en espace "modèle entité" (cf. LivingEntityRenderer)
         pose.scale(-1.0F, -1.0F, 1.0F);

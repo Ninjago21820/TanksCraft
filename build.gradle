@@ -30,6 +30,11 @@ neoForge {
     runs {
         client {
             client()
+            // Screenshot automatique du hangar : ./gradlew runClient -Pautoshot
+            if (project.hasProperty('autoshot')) {
+                systemProperty 'tankscraft.autoshot', 'true'
+                systemProperty 'tankscraft.autoshot.path', layout.buildDirectory.file('autoshot.png').get().asFile.absolutePath
+            }
         }
 
         server {

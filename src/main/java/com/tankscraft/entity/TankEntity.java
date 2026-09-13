@@ -227,7 +227,8 @@ public class TankEntity extends Entity {
 
     @Override
     public Vec3 getPassengerRidingPosition(Entity passenger) {
-        return new Vec3(this.getX(), this.getY() + 1.0, this.getZ());
+        // le commandant émerge de la coupole, pas les pieds dans la tourelle
+        return new Vec3(this.getX(), this.getY() + 1.35, this.getZ());
     }
 
     @Override
