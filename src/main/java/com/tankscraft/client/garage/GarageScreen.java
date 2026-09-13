@@ -217,6 +217,14 @@ public class GarageScreen extends Screen {
         g.drawString(this.font, "A", 10, y + 1, 0xFFFFFFFF, false);
     }
 
+    @Override
+    public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+        // no-op volontaire : le garage dessine son propre fond dès le début de
+        // render(). En 1.21.1, Screen.render() appelle renderBackground() qui
+        // dessine panorama + flou de menu (menuBackgroundBlurriness) + gradient
+        // sombre PAR-DESSUS l'UI déjà dessinée, juste avant les widgets.
+    }
+
     /** Screenshot du garage (utilisé par la CI) ; suffixe "", "_b" ou "_c". */
     private void captureAutoshot(String suffix) {
         try {
