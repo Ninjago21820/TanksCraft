@@ -17,7 +17,6 @@ import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen;
 import net.minecraft.client.gui.screens.options.OptionsScreen;
 import net.minecraft.client.gui.screens.worldselection.SelectWorldScreen;
 import net.minecraft.client.model.geom.ModelPart;
-import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.network.chat.Component;
@@ -188,22 +187,25 @@ public class GarageScreen extends Screen {
 
         PoseStack pose = g.pose();
         pose.pushPose();
-        pose.translate(anchorX, anchorY, 200.0F);
+        // z=150 : laisse de la marge pour l'amplitude de profondeur du char
+        // (±2,5 blocs de long sous rotation) tout en restant sous l'UI (z=400)
+        pose.translate(anchorX, anchorY, 150.0F);
+        // compression de la profondeur finale (invisible en ortho pour x/y) :
+        // borne le bout du canon sous le plan de l'UI même à fort zoom
+        pose.scale(1.0F, 1.0F, 0.4F);
 
         float pixelsPerBlock = (this.height * 0.5F * this.renderZoom) / 1.75F;
-        pose.scale(pixelsPerBlock, pixelsPerBlock, pixelsPerBlock);
 
-        // orbite autour du centre du châssis
-        pose.translate(0.0F, 0.8F, 0.0F);
+        // Chaîne copiée d'InventoryScreen.renderEntityInInventory (1.21.1) et
+        // LivingEntityRenderer : passage en espace GUI (z inversé), flip écran,
+        // pitch caméra, orbite yaw autour du centre du char, flip modèle, puis
+        // pied du char posé sur l'ancre. ModelPart divise les coordonnées par 16.
+        pose.scale(pixelsPerBlock, pixelsPerBlock, -pixelsPerBlock);
+        pose.mulPose(Axis.ZP.rotationDegrees(180.0F));
         pose.mulPose(Axis.XP.rotationDegrees(this.renderPitch));
-        pose.mulPose(Axis.YP.rotationDegrees(180.0F - this.renderYaw));
-        pose.translate(0.0F, -0.8F, 0.0F);
-
-        // compression de la profondeur : invisible en projection ortho,
-        // mais borne le char sous le plan de l'UI (z=400) quel que soit le zoom
-        pose.scale(1.0F, 1.0F, 0.3F);
-
-        // passage en espace "modèle entité" (cf. LivingEntityRenderer)
+        pose.translate(0.0F, ORBIT_CENTER_Y, 0.0F);
+        pose.mulPose(Axis.YP.rotationDegrees(-this.renderYaw));
+        pose.translate(0.0F, -ORBIT_CENTER_Y, 0.0F);
         pose.scale(-1.0F, -1.0F, 1.0F);
         pose.translate(0.0F, -1.501F, 0.0F);
 
@@ -214,10 +216,9 @@ public class GarageScreen extends Screen {
         TankModels.poseParts(model, turretYaw, gunPitch);
 
         Lighting.setupForEntityInInventory();
-        MultiBufferSource.BufferSource buffers = this.minecraft.renderBuffers().bufferSource();
-        VertexConsumer consumer = buffers.getBuffer(RenderType.entityCutoutNoCull(this.selected.texture()));
+        VertexConsumer consumer = g.bufferSource().getBuffer(RenderType.entityCutoutNoCull(this.selected.texture()));
         model.render(pose, consumer, 0xF000F0, OverlayTexture.NO_OVERLAY);
-        buffers.endBatch();
+        g.flush();
         Lighting.setupFor3DItems();
 
         pose.popPose();
