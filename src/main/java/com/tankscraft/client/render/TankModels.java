@@ -1,11 +1,11 @@
 package com.tankscraft.client.render;
 
 import com.tankscraft.tank.TankDefinition;
-import net.minecraft.client.model.CubeListBuilder;
-import net.minecraft.client.model.MeshDefinition;
-import net.minecraft.client.model.PartDefinition;
-import net.minecraft.client.model.PartPose;
-import net.minecraft.client.model.geom.LayerDefinition;
+import net.minecraft.client.model.geom.PartPose;
+import net.minecraft.client.model.geom.builders.CubeListBuilder;
+import net.minecraft.client.model.geom.builders.LayerDefinition;
+import net.minecraft.client.model.geom.builders.MeshDefinition;
+import net.minecraft.client.model.geom.builders.PartDefinition;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.util.Mth;
 

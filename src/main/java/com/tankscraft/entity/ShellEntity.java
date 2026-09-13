@@ -96,6 +96,6 @@ public class ShellEntity extends Projectile {
     }
 
     @Override
-    protected void defineSynchedEntityData(net.minecraft.network.syncher.SynchedEntityData.Builder builder) {
+    protected void defineSynchedData(net.minecraft.network.syncher.SynchedEntityData.Builder builder) {
     }
 }
