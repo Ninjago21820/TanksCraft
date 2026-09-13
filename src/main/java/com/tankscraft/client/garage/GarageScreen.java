@@ -393,9 +393,12 @@ public class GarageScreen extends Screen {
                 g.fill(40, cardsY + 22, 48, cardsY + 30, 0xFFFF00FF);
             }
 
-            // rendu 3D du char dans la carte (vignette façon WoT)
+            // rendu 3D du char dans la carte (vignette façon WoT).
+            // z=360 : AU-DESSUS des fills de fond de carte (z=340, qui écrivent le
+            // depth buffer) et EN-DESSOUS des textes (z=400). Un z négatif serait
+            // rejeté par le test de profondeur contre le fond plein écran (z=0).
             renderTankModel(g, def, cx + CARD_W / 2.0F, cardsY + CARD_H - 5, 26.0F,
-                    -28.0F, 14.0F, -6.0F, 1.5F, -30.0F, 0.08F);
+                    -28.0F, 14.0F, -6.0F, 1.5F, 360.0F, 0.02F);
 
             // tier + classe
             g.drawString(this.font, TankDefinition.roman(def.tier()), cx + 4, cardsY + 3, GOLD, true);
@@ -633,6 +636,7 @@ public class GarageScreen extends Screen {
         int r = (int) (ar + (br - ar) * t);
         int gg = (int) (ag + (bg - ag) * t);
         int bl = (int) (ab + (bb - ab) * t);
-        return (r << 16) | (gg << 8) | bl;
+        // OBLIGATOIRE : sans le OR alpha, la couleur vaut 0x00RRGGBB = fill invisible
+        return 0xFF000000 | (r << 16) | (gg << 8) | bl;
     }
 }
