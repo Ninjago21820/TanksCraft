@@ -4,6 +4,10 @@
 
 > Comme BlockFront réinventait Call of Duty dans Minecraft, TanksCraft réinvente World of Tanks : chars pilotables, tourelle qui suit la vue du pilote, obus explosifs… et un garage digne de ce nom.
 
+![Le hangar TanksCraft — screenshot généré par la CI](docs/garage.png)
+
+*Le hangar, capturé automatiquement par le smoke test CI (client lancé sous Xvfb, screenshot du garage puis fermeture propre).*
+
 ![Java 21](https://img.shields.io/badge/Java-21-orange) ![Minecraft 1.21.1](https://img.shields.io/badge/Minecraft-1.21.1-green) ![NeoForge](https://img.shields.io/badge/NeoForge-21.1.x-blue) ![License](https://img.shields.io/badge/License-MIT-lightgrey)
 
 ## 🏠 Le Hangar (nouveau menu principal)
