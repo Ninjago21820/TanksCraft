@@ -58,13 +58,21 @@ jobs:
             "net/minecraft/client/gui/screens/inventory/InventoryScreen.java" \
             "net/minecraft/client/gui/GuiGraphics.java" \
             "net/minecraft/client/gui/Gui.java" \
+            "net/minecraft/client/gui/Font.java" \
+            "net/minecraft/client/gui/components/AbstractWidget.java" \
             "net/minecraft/client/renderer/GameRenderer.java" \
             "net/minecraft/client/renderer/MultiBufferSource.java" \
+            "net/minecraft/client/renderer/RenderBuffers.java" \
             "net/minecraft/client/renderer/RenderType.java" \
             "net/minecraft/client/renderer/RenderStateShard.java" \
+            "net/minecraft/client/renderer/texture/*.java" \
             "net/minecraft/client/renderer/entity/LivingEntityRenderer.java" \
             "net/minecraft/client/renderer/entity/EntityRenderDispatcher.java" \
             "net/minecraft/client/renderer/entity/EntityRenderer.java" \
+            "com/mojang/blaze3d/platform/Lighting.java" \
+            "com/mojang/blaze3d/platform/GlStateManager.java" \
+            "com/mojang/blaze3d/systems/RenderSystem.java" \
+            "com/mojang/blaze3d/vertex/*.java" \
             -d extracted || true
           find extracted -name "*.java" | head -30
 

@@ -67,7 +67,7 @@ jobs:
           git config --global user.email "ci-bot@users.noreply.github.com"
           rm -rf /tmp/ci-shots && mkdir -p /tmp/ci-shots && cd /tmp/ci-shots
           git init -q .
-          cp "$GITHUB_WORKSPACE/build/autoshot.png" . 2>/dev/null || echo "MANQUANT" > autoshot.png.manquant
+          cp "$GITHUB_WORKSPACE"/build/autoshot*.png . 2>/dev/null || echo "MANQUANT" > autoshot.png.manquant
           tail -c 200000 "$GITHUB_WORKSPACE/client.log" > client.log 2>/dev/null || true
           grep -iE "TanksCraft|tankscraft|crash|FATAL|ERROR|GLFW|Exception" "$GITHUB_WORKSPACE/client.log" | tail -150 > client-interesting.log 2>/dev/null || true
           git add -A

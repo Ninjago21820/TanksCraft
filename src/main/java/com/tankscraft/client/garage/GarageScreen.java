@@ -136,8 +136,12 @@ public class GarageScreen extends Screen {
 
     @Override
     public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+        renderProbe(g, 0); // SONDE : avant le fond (attendu : recouvert par le fond)
         this.renderBackdrop(g);
+        renderProbe(g, 1); // SONDE : après le fond
+
         this.renderTankPreview(g, partialTick);
+        renderProbe(g, 2); // SONDE : après le char vedette
 
         // toute l'UI passe devant le char (z=400 : plan des tooltips vanilla,
         // rester en dessous du plan far de la projection ortho GUI)
@@ -147,30 +151,83 @@ public class GarageScreen extends Screen {
 
         this.renderLogo(g);
         this.renderTopBar(g);
+        renderProbe(g, 3); // SONDE : après logo + barre du haut (z=400)
+
         this.renderRightPanel(g);
+        renderProbe(g, 4); // SONDE : après le panneau droit (z=400)
+
+        // SONDE triplet z + drawManaged (même instant que la sonde 4) :
+        // si la couleur de base l'emporte, z n'a pas d'effet sur les fills.
+        pose.pushPose();
+        pose.translate(0.0F, 0.0F, -400.0F);
+        g.fill(10, 188, 18, 196, 0xFFFF4040); // z≈0
+        pose.popPose();
+        g.fill(18, 188, 26, 196, 0xFF40FF40); // z≈400
+        pose.pushPose();
+        pose.translate(0.0F, 0.0F, -460.0F);
+        g.fill(26, 188, 34, 196, 0xFF4040FF); // z≈-60
+        pose.popPose();
+        g.drawManaged(() -> g.fill(34, 188, 42, 196, 0xFFFF8000));
+
         this.renderCarousel(g, mouseX, mouseY);
+        renderProbe(g, 5); // SONDE : après le carrousel
+
         this.renderFooter(g);
 
         super.render(g, mouseX, mouseY, partialTick);
+        renderProbe(g, 6); // SONDE : après les widgets
 
         pose.popPose();
 
-        if (this.autoshotCountdown >= 0) {
-            // on ne décompte qu'une fois l'écran de chargement disparu
-            if (this.minecraft.getOverlay() == null && this.autoshotCountdown-- == 0) {
-                this.captureAutoshot();
+        if (AUTOSHOT && this.autoshotCountdown > -200) {
+            // on ne décompte qu'une fois l'écran de chargement disparu ;
+            // 3 captures espacées pour détecter une accumulation inter-frames
+            if (this.minecraft.getOverlay() == null) {
+                int c = this.autoshotCountdown--;
+                if (c == 0) {
+                    this.captureAutoshot("");
+                } else if (c == -30) {
+                    this.captureAutoshot("_b");
+                } else if (c == -60) {
+                    this.captureAutoshot("_c");
+                    this.minecraft.stop();
+                }
             }
         }
     }
 
-    /** Screenshot du garage puis fermeture du jeu (utilisé par la CI). */
-    private void captureAutoshot() {
+    /**
+     * SONDE de diagnostic rendu (à retirer une fois le problème résolu) :
+     * carré opaque 8x8 + « A » blanc, colonne x=0/10, ligne y=140+stage*8.
+     * La couleur et la luminosité finales de chaque carré renseignent
+     * l'ordre effectif de composition GPU des draws de la frame.
+     */
+    private void renderProbe(GuiGraphics g, int stage) {
+        int y = 140 + stage * 8;
+        int color = switch (stage) {
+            case 0 -> 0xFFFF0000; // rouge : avant le fond
+            case 1 -> 0xFF00FF00; // vert : après le fond
+            case 2 -> 0xFF0000FF; // bleu : après le char vedette
+            case 3 -> 0xFFFFFF00; // jaune : après logo + topbar
+            case 4 -> 0xFF00FFFF; // cyan : après le panneau droit
+            case 5 -> 0xFFFF00FF; // magenta : après le carrousel
+            default -> 0xFFFFFFFF; // blanc : après les widgets
+        };
+        g.fill(0, y, 8, y + 8, color);
+        g.drawString(this.font, "A", 10, y + 1, 0xFFFFFFFF, false);
+    }
+
+    /** Screenshot du garage (utilisé par la CI) ; suffixe "", "_b" ou "_c". */
+    private void captureAutoshot(String suffix) {
         try {
+            String path = System.getProperty("tankscraft.autoshot.path", "autoshot.png");
+            String out = path.endsWith(".png")
+                    ? path.substring(0, path.length() - 4) + suffix + ".png"
+                    : path + suffix;
             net.minecraft.client.Screenshot.takeScreenshot(this.minecraft.getMainRenderTarget())
-                    .writeToFile(new java.io.File(System.getProperty("tankscraft.autoshot.path", "autoshot.png")));
+                    .writeToFile(new java.io.File(out));
         } catch (Exception ignored) {
         }
-        this.minecraft.stop();
     }
 
     private void renderBackdrop(GuiGraphics g) {
@@ -321,6 +378,12 @@ public class GarageScreen extends Screen {
             fillChamfer(g, cx, cardsY, cx + CARD_W, cardsY + CARD_H, 3,
                     isSelected ? 0xFF1A1710 : PANEL_BG_DARK);
             pose.popPose();
+
+            // SONDE : carré dans la carte #0 juste après ses fills de fond —
+            // visible ⇒ les draws suivants passent bien au-dessus des fills
+            if (i == 0) {
+                g.fill(40, cardsY + 22, 48, cardsY + 30, 0xFFFF00FF);
+            }
 
             // rendu 3D du char dans la carte (vignette façon WoT)
             renderTankModel(g, def, cx + CARD_W / 2.0F, cardsY + CARD_H - 5, 26.0F,
