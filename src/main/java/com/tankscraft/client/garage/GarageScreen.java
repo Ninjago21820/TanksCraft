@@ -139,10 +139,11 @@ public class GarageScreen extends Screen {
         this.renderBackdrop(g);
         this.renderTankPreview(g, partialTick);
 
-        // toute l'UI passe devant le char
+        // toute l'UI passe devant le char (z=400 : plan des tooltips vanilla,
+        // rester en dessous du plan far de la projection ortho GUI)
         PoseStack pose = g.pose();
         pose.pushPose();
-        pose.translate(0.0F, 0.0F, 500.0F);
+        pose.translate(0.0F, 0.0F, 400.0F);
 
         this.renderLogo(g);
         this.renderTopBar(g);
