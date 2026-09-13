@@ -56,6 +56,10 @@ jobs:
             "net/minecraft/client/model/geom/ModelPart.java" \
             "net/minecraft/client/model/geom/builders/*.java" \
             "net/minecraft/client/gui/screens/inventory/InventoryScreen.java" \
+            "net/minecraft/client/gui/GuiGraphics.java" \
+            "net/minecraft/client/gui/Gui.java" \
+            "net/minecraft/client/renderer/GameRenderer.java" \
+            "net/minecraft/client/renderer/MultiBufferSource.java" \
             "net/minecraft/client/renderer/entity/LivingEntityRenderer.java" \
             "net/minecraft/client/renderer/entity/EntityRenderDispatcher.java" \
             "net/minecraft/client/renderer/entity/EntityRenderer.java" \
