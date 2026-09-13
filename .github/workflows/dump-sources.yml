@@ -60,6 +60,8 @@ jobs:
             "net/minecraft/client/gui/Gui.java" \
             "net/minecraft/client/renderer/GameRenderer.java" \
             "net/minecraft/client/renderer/MultiBufferSource.java" \
+            "net/minecraft/client/renderer/RenderType.java" \
+            "net/minecraft/client/renderer/RenderStateShard.java" \
             "net/minecraft/client/renderer/entity/LivingEntityRenderer.java" \
             "net/minecraft/client/renderer/entity/EntityRenderDispatcher.java" \
             "net/minecraft/client/renderer/entity/EntityRenderer.java" \
