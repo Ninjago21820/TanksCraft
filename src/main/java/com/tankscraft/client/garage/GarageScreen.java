@@ -146,8 +146,11 @@ public class GarageScreen extends Screen {
 
         pose.popPose();
 
-        if (this.autoshotCountdown >= 0 && this.autoshotCountdown-- == 0) {
-            this.captureAutoshot();
+        if (this.autoshotCountdown >= 0) {
+            // on ne décompte qu'une fois l'écran de chargement disparu
+            if (this.minecraft.getOverlay() == null && this.autoshotCountdown-- == 0) {
+                this.captureAutoshot();
+            }
         }
     }
 

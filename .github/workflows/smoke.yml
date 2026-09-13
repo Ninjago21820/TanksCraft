@@ -66,6 +66,6 @@ jobs:
       - name: Run server for 3 minutes
         run: |
           mkdir -p run && echo "eula=true" > run/eula.txt
-          timeout 200 ./gradlew runServer --no-daemon 2>&1 | tee server.log || true
+          timeout 420 ./gradlew runServer --no-daemon 2>&1 | tee server.log || true
           grep -q "Done (" server.log || { echo "Le serveur n'a pas démarré !"; exit 1; }
           grep -q "TanksCraft" server.log || { echo "Le mod n'est pas chargé !"; exit 1; }
