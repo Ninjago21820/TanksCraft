@@ -158,7 +158,7 @@ public class GarageScreen extends Screen {
     private void captureAutoshot() {
         try {
             net.minecraft.client.Screenshot.takeScreenshot(this.minecraft.getMainRenderTarget())
-                    .writeFile(new java.io.File(System.getProperty("tankscraft.autoshot.path", "autoshot.png")));
+                    .writeToFile(new java.io.File(System.getProperty("tankscraft.autoshot.path", "autoshot.png")));
         } catch (Exception ignored) {
         }
         this.minecraft.stop();
