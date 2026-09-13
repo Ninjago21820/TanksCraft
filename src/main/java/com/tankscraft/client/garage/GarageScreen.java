@@ -48,6 +48,9 @@ public class GarageScreen extends Screen {
     private static final int CARD_GAP = 6;
     private static final int CAROUSEL_Y_BOTTOM = 80;
 
+    /** Hauteur (en blocs) du centre de rotation de la caméra du hangar. */
+    private static final float ORBIT_CENTER_Y = 0.85F;
+
     // palette
     private static final int PANEL_BG = 0xD00F1214;
     private static final int PANEL_BG_DARK = 0xE0121416;
