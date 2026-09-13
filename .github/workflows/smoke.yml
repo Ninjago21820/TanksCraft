@@ -1,0 +1,97 @@
+name: Smoke test
+
+# workflow_dispatch n'existe que sur la branche par défaut ; on utilise donc
+# un déclencheur push avec filtre de chemin : modifier smoke.trigger (ou ce
+# fichier) déclenche le smoke test sur la branche poussée.
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "smoke.trigger"
+      - ".github/workflows/smoke.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: smoke
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  client-screenshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
+
+      - name: Install xvfb
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq xvfb
+
+      - name: Prepare client options (rapide pour le rendu logiciel)
+        run: |
+          mkdir -p run
+          cat > run/options.txt <<'EOF'
+          version:1
+          graphicsMode:0
+          renderDistance:2
+          simulationDistance:5
+          biomeBlendRadius:0
+          mipmapLevels:0
+          vsync:false
+          maxFps:260
+          fullscreen:false
+          guiScale:0
+          soundCategory_master:0.0
+          pauseOnLostFocus:false
+          EOF
+
+      - name: Run client (auto-screenshot du hangar)
+        run: |
+          set -o pipefail
+          xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew runClient -Pautoshot --no-daemon 2>&1 | tee client.log
+
+      - name: Publish screenshot + log
+        if: always()
+        run: |
+          git config --global user.name "ci-bot"
+          git config --global user.email "ci-bot@users.noreply.github.com"
+          rm -rf /tmp/ci-shots && mkdir -p /tmp/ci-shots && cd /tmp/ci-shots
+          git init -q .
+          cp "$GITHUB_WORKSPACE"/build/autoshot*.png . 2>/dev/null || echo "MANQUANT" > autoshot.png.manquant
+          tail -c 200000 "$GITHUB_WORKSPACE/client.log" > client.log 2>/dev/null || true
+          grep -iE "TanksCraft|tankscraft|crash|FATAL|ERROR|GLFW|Exception" "$GITHUB_WORKSPACE/client.log" | tail -150 > client-interesting.log 2>/dev/null || true
+          git add -A
+          git commit -qm "screenshot $GITHUB_SHA"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" HEAD:refs/heads/ci-shots
+
+  server-boot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
+
+      - name: Run server for a few minutes
+        run: |
+          mkdir -p run && echo "eula=true" > run/eula.txt
+          timeout 420 ./gradlew runServer --no-daemon 2>&1 | tee server.log || true
+          grep -q "Done (" server.log || { echo "Le serveur n'a pas démarré !"; exit 1; }
+          grep -q "TanksCraft" server.log || { echo "Le mod n'est pas chargé !"; exit 1; }
