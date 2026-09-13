@@ -3,3 +3,4 @@ Dernier déclenchement : 2026-09-13 (validation visuelle du hangar + boot serveu
 Relance smoke test : Sun Sep 13 13:41:48 UTC 2026
 Relance smoke test (char 3D visible): Sun Sep 13 14:55:33 UTC 2026
 Relance smoke (constante ORBIT_CENTER_Y): Sun Sep 13 15:00:51 UTC 2026
+Refonte garage WoT moderne: Sun Sep 13 16:19:15 UTC 2026

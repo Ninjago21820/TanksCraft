@@ -1,8 +1,8 @@
 package com.tankscraft.client.garage;
 
+import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.platform.Lighting;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
@@ -28,13 +28,13 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.client.gui.ModListScreen;
 
-import java.util.List;
 import java.util.Locale;
 
 /**
- * Le hangar : remplace le menu principal de Minecraft.
- * façon World of Tanks — char 3D au centre, carrousel en bas,
- * fiche technique à gauche, bouton "Au combat !" à droite.
+ * Le hangar, façon World of Tanks moderne (1.0+) : fond anthracite, char au
+ * centre-gauche, fiche du char à droite au-dessus du grand bouton rouge
+ * « Au combat ! », carrousel compact pleine largeur en bas avec le rendu 3D
+ * de chaque char dans sa carte.
  */
 @OnlyIn(Dist.CLIENT)
 public class GarageScreen extends Screen {
@@ -43,26 +43,31 @@ public class GarageScreen extends Screen {
     private static final ResourceLocation LOGO =
             ResourceLocation.fromNamespaceAndPath("tankscraft", "textures/gui/logo.png");
 
-    private static final int CARD_W = 96;
-    private static final int CARD_H = 58;
-    private static final int CARD_GAP = 6;
-    private static final int CAROUSEL_Y_BOTTOM = 80;
+    // ------------------------------------------------------------ layout
+    private static final int CARD_W = 92;
+    private static final int CARD_H = 52;
+    private static final int CARD_GAP = 4;
+    private static final int STRIP_MARGIN = 30;
+    /** Hauteur réservée en bas : cartes + ligne de pied de page. */
+    private static final int STRIP_BOTTOM = 64;
+    private static final int RIGHT_W = 196;
+    private static final int MARGIN = 10;
 
     /** Hauteur (en blocs) du centre de rotation de la caméra du hangar. */
     private static final float ORBIT_CENTER_Y = 0.85F;
 
-    // palette
-    private static final int PANEL_BG = 0xD00F1214;
-    private static final int PANEL_BG_DARK = 0xE0121416;
-    private static final int PANEL_BORDER = 0xFF3A4038;
+    // ------------------------------------------------------------ palette (anthracite + or)
+    private static final int OVERLAY_DARK = 0x59000000;
+    private static final int PANEL_BG = 0xE6080A0C;
+    private static final int PANEL_BG_DARK = 0xF0050708;
+    private static final int PANEL_BORDER = 0xFF8A6D3B;
     private static final int GOLD = 0xFFD9A441;
-    private static final int TEXT_MAIN = 0xFFE8E4D8;
-    private static final int TEXT_DIM = 0xFF9AA08E;
-    private static final int BATTLE_RED = 0xFFB3261E;
-    private static final int BATTLE_ORANGE = 0xFFE8590C;
-    private static final int READY_GREEN = 0xFF7DC95E;
-
-    private static final List<TankDefinition> TANKS = Tanks.ALL;
+    private static final int GOLD_DIM = 0xFF9C7B3E;
+    private static final int TEXT_MAIN = 0xFFF2EFE6;
+    private static final int TEXT_DIM = 0xFF9B9F93;
+    private static final int BATTLE_RED = 0xFFC23B22;
+    private static final int BATTLE_RED_DARK = 0xFF7E1F10;
+    private static final int BATTLE_HOVER = 0xFFE8590C;
 
     private final ItemStack goldIcon = new ItemStack(Items.GOLD_INGOT);
     private final ItemStack creditIcon = new ItemStack(Items.EMERALD);
@@ -72,10 +77,10 @@ public class GarageScreen extends Screen {
     private int carouselScroll = 0;
 
     // caméra
-    private float targetYaw = -28.0F;
-    private float renderYaw = -28.0F;
-    private float targetPitch = 9.0F;
-    private float renderPitch = 9.0F;
+    private float targetYaw = -32.0F;
+    private float renderYaw = -32.0F;
+    private float targetPitch = 10.0F;
+    private float renderPitch = 10.0F;
     private float targetZoom = 1.0F;
     private float renderZoom = 1.0F;
 
@@ -90,57 +95,58 @@ public class GarageScreen extends Screen {
         super(Component.translatable("screen.tankscraft.garage"));
     }
 
+    // ------------------------------------------------------------ initialisation
+
     @Override
     protected void init() {
         super.init();
         this.selected = Tanks.byId(GarageState.get().selectedTank);
-        this.clampCarouselScroll();
         this.ensureSelectedVisible();
 
-        int bw = 200;
-        int bx = this.width - bw - 16;
-        int by = this.height - 188;
-
-        this.addRenderableWidget(new BattleButton(bx, by, bw, 44,
-                Component.translatable("gui.tankscraft.to_battle"),
-                b -> this.minecraft.setScreen(new SelectWorldScreen(this))));
-
+        // menu vertical à gauche (comme le bandeau latéral WoT)
+        int mx = MARGIN;
+        int my = 58;
         this.addRenderableWidget(Button.builder(Component.translatable("gui.tankscraft.multiplayer"),
                         b -> this.minecraft.setScreen(new JoinMultiplayerScreen(this)))
-                .bounds(bx, by + 52, bw, 20).build());
+                .bounds(mx, my, 92, 18).build());
         this.addRenderableWidget(Button.builder(Component.translatable("gui.tankscraft.options"),
                         b -> this.minecraft.setScreen(new OptionsScreen(this, this.minecraft.options)))
-                .bounds(bx, by + 76, bw, 20).build());
+                .bounds(mx, my + 20, 92, 18).build());
         this.addRenderableWidget(Button.builder(Component.translatable("gui.tankscraft.mods"),
                         b -> this.minecraft.setScreen(new ModListScreen(this)))
-                .bounds(bx, by + 100, bw, 20).build());
+                .bounds(mx, my + 40, 92, 18).build());
         this.addRenderableWidget(Button.builder(Component.translatable("menu.quit"),
                         b -> this.minecraft.stop())
-                .bounds(bx, by + 124, bw, 20).build());
+                .bounds(mx, my + 60, 92, 18).build());
+
+        // grand bouton rouge, en bas à droite au-dessus du carrousel
+        this.addRenderableWidget(new BattleButton(this.width - MARGIN - 6 - RIGHT_W, this.stripCardsY() - 52,
+                RIGHT_W, 44, Component.translatable("gui.tankscraft.to_battle"),
+                b -> this.minecraft.setScreen(new SelectWorldScreen(this))));
 
         // flèches du carrousel
-        int carouselY = this.carouselY();
+        int cy = this.stripCardsY();
         this.addRenderableWidget(Button.builder(Component.literal("<"), b -> this.scrollCarousel(-1))
-                .bounds(8, carouselY + CARD_H / 2 - 10, 20, 20).build());
+                .bounds(5, cy + CARD_H / 2 - 9, 18, 18).build());
         this.addRenderableWidget(Button.builder(Component.literal(">"), b -> this.scrollCarousel(1))
-                .bounds(this.carouselRight() + 4, carouselY + CARD_H / 2 - 10, 20, 20).build());
+                .bounds(this.width - 5 - 18, cy + CARD_H / 2 - 9, 18, 18).build());
     }
 
     // ------------------------------------------------------------ rendu
 
     @Override
     public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
-        this.renderHangarBackground(g);
+        this.renderBackdrop(g);
         this.renderTankPreview(g, partialTick);
 
-        // L'UI passe devant le char (z supérieur)
+        // toute l'UI passe devant le char
         PoseStack pose = g.pose();
         pose.pushPose();
-        pose.translate(0.0F, 0.0F, 400.0F);
+        pose.translate(0.0F, 0.0F, 500.0F);
 
         this.renderLogo(g);
         this.renderTopBar(g);
-        this.renderLeftPanel(g);
+        this.renderRightPanel(g);
         this.renderCarousel(g, mouseX, mouseY);
         this.renderFooter(g);
 
@@ -166,88 +172,41 @@ public class GarageScreen extends Screen {
         this.minecraft.stop();
     }
 
-    private void renderHangarBackground(GuiGraphics g) {
-        // étirement plein écran (l'image est en ~16:9, comme la plupart des écrans)
+    private void renderBackdrop(GuiGraphics g) {
         g.blit(HANGAR, 0, 0, this.width, this.height, 0.0F, 0.0F, 1376, 768, 1376, 768);
-        // léger assombrissement en bas pour asseoir l'UI
-        g.fillGradient(0, this.height - 140, this.width, this.height, 0x00000000, 0x99000000);
-    }
-
-    private void renderTankPreview(GuiGraphics g, float partialTick) {
-        // caméra lissée
-        this.renderYaw += Mth.wrapDegrees(this.targetYaw - this.renderYaw) * 0.25F;
-        this.renderPitch += (this.targetPitch - this.renderPitch) * 0.25F;
-        this.renderZoom += (this.targetZoom - this.renderZoom) * 0.25F;
-
-        int anchorX = (int) (this.width * 0.44F);
-        int anchorY = this.height - 92;
-
-        // ombre au sol
-        float shadow = 0.55F * this.renderZoom;
-        int halfW = (int) (60 * shadow);
-        g.fill(anchorX - halfW, anchorY - 2, anchorX + halfW, anchorY + 2, 0x40000000);
-        g.fill(anchorX - (int) (halfW * 0.8F), anchorY - 1, anchorX + (int) (halfW * 0.8F), anchorY + 1, 0x40000000);
-
-        PoseStack pose = g.pose();
-        pose.pushPose();
-        // z=150 : laisse de la marge pour l'amplitude de profondeur du char
-        // (±2,5 blocs de long sous rotation) tout en restant sous l'UI (z=400)
-        pose.translate(anchorX, anchorY, 150.0F);
-        // compression de la profondeur finale (invisible en ortho pour x/y) :
-        // borne le bout du canon sous le plan de l'UI même à fort zoom
-        pose.scale(1.0F, 1.0F, 0.4F);
-
-        float pixelsPerBlock = (this.height * 0.5F * this.renderZoom) / 1.75F;
-
-        // Chaîne copiée d'InventoryScreen.renderEntityInInventory (1.21.1) et
-        // LivingEntityRenderer : passage en espace GUI (z inversé), flip écran,
-        // pitch caméra, orbite yaw autour du centre du char, flip modèle, puis
-        // pied du char posé sur l'ancre. ModelPart divise les coordonnées par 16.
-        pose.scale(pixelsPerBlock, pixelsPerBlock, -pixelsPerBlock);
-        pose.mulPose(Axis.ZP.rotationDegrees(180.0F));
-        pose.mulPose(Axis.XP.rotationDegrees(this.renderPitch));
-        pose.translate(0.0F, ORBIT_CENTER_Y, 0.0F);
-        pose.mulPose(Axis.YP.rotationDegrees(-this.renderYaw));
-        pose.translate(0.0F, -ORBIT_CENTER_Y, 0.0F);
-        pose.scale(-1.0F, -1.0F, 1.0F);
-        pose.translate(0.0F, -1.501F, 0.0F);
-
-        ModelPart model = TankModels.bake(this.selected);
-        float time = (net.minecraft.Util.getMillis() % 100000L) / 1000.0F;
-        float turretYaw = Mth.sin(time * 0.6F) * 20.0F;
-        float gunPitch = 3.0F + Mth.sin(time * 0.4F) * 2.0F;
-        TankModels.poseParts(model, turretYaw, gunPitch);
-
-        Lighting.setupForEntityInInventory();
-        VertexConsumer consumer = g.bufferSource().getBuffer(RenderType.entityCutoutNoCull(this.selected.texture()));
-        model.render(pose, consumer, 0xF000F0, OverlayTexture.NO_OVERLAY);
-        g.flush();
-        Lighting.setupFor3DItems();
-
-        pose.popPose();
+        // ambiance « garage WoT » : anthracite profond + vignettage
+        g.fill(0, 0, this.width, this.height, OVERLAY_DARK);
+        g.fillGradient(0, 0, this.width, this.height / 3, 0x8C000000, 0x00000000);
+        g.fillGradient(0, this.height - 120, this.width, this.height, 0x00000000, 0xB3000000);
     }
 
     private void renderLogo(GuiGraphics g) {
-        int logoH = 56;
-        int logoW = logoH * 4; // l'image fait ~4:1
+        // petit logo, calé dans la bande libre entre le bloc commandant et les devises
+        int logoH = 20;
+        int logoW = logoH * 4;
+        int bandL = 118;
+        int bandR = this.width - 250;
+        if (bandR - bandL < logoW + 8) {
+            return; // écran trop étroit : pas de logo
+        }
+        int x = (bandL + bandR) / 2 - logoW / 2;
         RenderSystem.enableBlend();
         RenderSystem.blendFunc(GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ONE);
-        g.blit(LOGO, this.width / 2 - logoW / 2, 6, logoW, logoH, 0.0F, 0.0F, 1024, 256, 1024, 256);
+        g.blit(LOGO, x, 6, logoW, logoH, 0.0F, 0.0F, 1024, 256, 1024, 256);
         RenderSystem.defaultBlendFunc();
         RenderSystem.disableBlend();
     }
 
     private void renderTopBar(GuiGraphics g) {
         GarageState state = GarageState.get();
-        Minecraft mc = this.minecraft;
 
-        // joueur, en haut à gauche
-        g.drawString(this.font, Component.translatable("gui.tankscraft.commander"), 10, 8, TEXT_DIM, true);
-        String playerName = mc != null ? mc.getUser().getName() : "Commandant";
-        g.drawString(this.font, playerName, 10, 19, TEXT_MAIN, true);
+        // commandant, en haut à gauche
+        g.drawString(this.font, Component.translatable("gui.tankscraft.commander"), MARGIN + 2, 8, GOLD_DIM, true);
+        String playerName = this.minecraft != null ? this.minecraft.getUser().getName() : "Commandant";
+        g.drawString(this.font, playerName, MARGIN + 2, 19, TEXT_MAIN, true);
 
         // devises, en haut à droite
-        int x = this.width - 10;
+        int x = this.width - MARGIN;
         x = drawCurrency(g, x, format(state.credits), this.creditIcon);
         x = drawCurrency(g, x, format(state.gold), this.goldIcon);
         drawCurrency(g, x, format(state.freeXp), this.xpIcon);
@@ -256,78 +215,73 @@ public class GarageScreen extends Screen {
     /** Dessine une devise de droite à gauche ; renvoie le x suivant. */
     private int drawCurrency(GuiGraphics g, int rightX, String value, ItemStack icon) {
         int textW = this.font.width(value);
-        int w = textW + 20;
-        g.fill(rightX - w - 6, 6, rightX, 26, PANEL_BG);
-        g.renderItem(icon, rightX - w - 2, 7);
-        g.drawString(this.font, value, rightX - textW - 2, 12, GOLD, true);
-        return rightX - w - 12;
+        int w = textW + 22;
+        fillChamfer(g, rightX - w - 8, 5, rightX, 26, 3, PANEL_BG);
+        g.renderItem(icon, rightX - w - 4, 8);
+        g.drawString(this.font, value, rightX - textW - 3, 13, GOLD, true);
+        return rightX - w - 14;
     }
 
-    private void renderLeftPanel(GuiGraphics g) {
-        int x = 10;
-        int y = 56;
-        int w = 172;
-        int h = 190;
-        g.fill(x - 1, y - 1, x + w + 1, y + h + 1, PANEL_BORDER);
-        g.fill(x, y, x + w, y + h, PANEL_BG);
+    // ------------------------------------------------------------ fiche char (droite)
 
-        // en-tête : nation + nom
+    private void renderRightPanel(GuiGraphics g) {
         TankDefinition def = this.selected;
-        g.fill(x + 6, y + 6, x + 16, y + 16, def.nation().color);
-        g.fill(x + 6, y + 6, x + 16, y + 7, def.nation().accent);
-        g.drawString(this.font, TankDefinition.roman(def.tier()), x + 21, y + 7, GOLD, true);
-        String name = this.font.plainSubstrByWidth(def.name().getString(), w - 30);
-        g.drawString(this.font, name, x + 6, y + 21, TEXT_MAIN, true);
+        int x1 = this.width - MARGIN - 6 - RIGHT_W;
+        int x2 = this.width - MARGIN - 6;
+        int y1 = 32;
+        int y2 = this.stripCardsY() - 60;
+
+        panelChamfer(g, x1, y1, x2, y2, 5);
+
+        int px = x1 + 8;
+        int pw = RIGHT_W - 16;
+
+        // plaque nominale : tier + nom
+        g.drawString(this.font, TankDefinition.roman(def.tier()), px, y1 + 6, GOLD, true);
+        String name = this.font.plainSubstrByWidth(def.name().getString(), pw - 14);
+        g.drawString(this.font, name, px + 13, y1 + 6, TEXT_MAIN, true);
         g.drawString(this.font, def.className().getString() + " • " + def.nation().displayName().getString(),
-                x + 6, y + 31, TEXT_DIM, true);
+                px, y1 + 17, TEXT_DIM, true);
 
-        // barres de stats
-        int sy = y + 48;
-        sy = drawStatBar(g, x + 6, sy, w - 12, "gui.tankscraft.stat.firepower", def.firepower());
-        sy = drawStatBar(g, x + 6, sy, w - 12, "gui.tankscraft.stat.mobility", def.mobility());
-        sy = drawStatBar(g, x + 6, sy, w - 12, "gui.tankscraft.stat.armor", def.armor());
-        sy = drawStatBar(g, x + 6, sy, w - 12, "gui.tankscraft.stat.camo", def.camo());
-        sy = drawStatBar(g, x + 6, sy, w - 12, "gui.tankscraft.stat.view", def.viewRange());
+        // barres de caractéristiques, une ligne chacune
+        int sy = y1 + 31;
+        sy = drawStatBar(g, px, sy, pw, "gui.tankscraft.stat.firepower", def.firepower());
+        sy = drawStatBar(g, px, sy, pw, "gui.tankscraft.stat.mobility", def.mobility());
+        sy = drawStatBar(g, px, sy, pw, "gui.tankscraft.stat.armor", def.armor());
+        sy = drawStatBar(g, px, sy, pw, "gui.tankscraft.stat.camo", def.camo());
+        sy = drawStatBar(g, px, sy, pw, "gui.tankscraft.stat.view", def.viewRange());
 
-        // chiffres clés
-        int ny = sy + 6;
-        g.fill(x + 6, ny - 4, x + w - 6, ny - 3, PANEL_BORDER);
-        drawKeyValue(g, x + 6, ny + 2, w - 12, Component.translatable("gui.tankscraft.stat.hp"), def.hp() + " PDV");
-        drawKeyValue(g, x + 6, ny + 13, w - 12, Component.translatable("gui.tankscraft.stat.damage"), def.damage() + "");
-        drawKeyValue(g, x + 6, ny + 24, w - 12, Component.translatable("gui.tankscraft.stat.speed"), def.topSpeedKmh() + " km/h");
-        drawKeyValue(g, x + 6, ny + 35, w - 12, Component.translatable("gui.tankscraft.stat.reload"),
-                String.format(Locale.ROOT, "%.1f s", def.reloadTicks() / 20.0F));
+        // chiffres clés en grille 2 x 2
+        int gy = sy + 6;
+        int colW = pw / 2;
+        g.fill(px, gy - 4, px + pw, gy - 3, PANEL_BORDER);
+        drawKeyValue(g, px, gy, colW, Component.translatable("gui.tankscraft.stat.hp"), def.hp() + "");
+        drawKeyValue(g, px + colW, gy, colW, Component.translatable("gui.tankscraft.stat.damage"), def.damage() + "");
+        drawKeyValue(g, px, gy + 11, colW, Component.translatable("gui.tankscraft.stat.speed"), def.topSpeedKmh() + "");
+        drawKeyValue(g, px + colW, gy + 11, colW, Component.translatable("gui.tankscraft.stat.reload"),
+                String.format(Locale.ROOT, "%.1fs", def.reloadTicks() / 20.0F));
     }
 
+    /** Une caractéristique sur une ligne : libellé, barre segmentée or, valeur. */
     private int drawStatBar(GuiGraphics g, int x, int y, int w, String labelKey, int value) {
         g.drawString(this.font, Component.translatable(labelKey), x, y, TEXT_DIM, true);
         String num = String.valueOf(value);
-        g.drawString(this.font, num, x + w - this.font.width(num), y, statColor(value), true);
+        g.drawString(this.font, num, x + w - this.font.width(num), y, GOLD, true);
 
-        int barY = y + 10;
-        int segments = 5;
-        int segW = (w - (segments - 1) * 2) / segments;
-        int filled = Mth.clamp(value, 0, 100) / 20;
-        int partial = Mth.clamp(value % 20, 0, 20);
-        int color = statColor(value);
+        int barX = x + 92;
+        int barW = w - 92 - 15;
+        int segments = 8;
+        int segW = Math.max(2, (barW - (segments - 1)) / segments);
+        int filled = Mth.clamp(value, 0, 100) * segments / 100;
+        int barY = y + 3;
         for (int i = 0; i < segments; i++) {
-            int sx = x + i * (segW + 2);
-            g.fill(sx, barY, sx + segW, barY + 4, 0xFF26292C);
+            int sx = barX + i * (segW + 1);
+            g.fill(sx, barY, sx + segW, barY + 3, 0xFF26221A);
             if (i < filled) {
-                g.fill(sx, barY, sx + segW, barY + 4, color);
-            } else if (i == filled && partial > 0) {
-                int pw = Math.max(1, segW * partial / 20);
-                g.fill(sx, barY, sx + pw, barY + 4, color);
+                g.fill(sx, barY, sx + segW, barY + 3, GOLD);
             }
         }
-        return barY + 12;
-    }
-
-    private static int statColor(int value) {
-        if (value < 34) {
-            return 0xFFC9503F;
-        }
-        return value < 67 ? 0xFFD9973F : READY_GREEN;
+        return y + 11;
     }
 
     private void drawKeyValue(GuiGraphics g, int x, int y, int w, Component key, String value) {
@@ -337,63 +291,144 @@ public class GarageScreen extends Screen {
 
     // ------------------------------------------------------------ carrousel
 
-    private int carouselY() {
-        return this.height - CAROUSEL_Y_BOTTOM;
-    }
-
-    private int carouselRight() {
-        return this.width - 240;
+    private int stripCardsY() {
+        return this.height - STRIP_BOTTOM;
     }
 
     private void renderCarousel(GuiGraphics g, int mouseX, int mouseY) {
-        int y = this.carouselY();
-        int left = 34;
-        int right = this.carouselRight();
+        int cardsY = this.stripCardsY();
+        int left = STRIP_MARGIN;
 
-        g.fill(0, y - 6, this.width, this.height, 0x80100F0E);
+        // bandeau sombre pleine largeur
+        g.fill(0, cardsY - 4, this.width, this.height, 0xCC050607);
 
-        for (int i = 0; i < TANKS.size(); i++) {
-            TankDefinition def = TANKS.get(i);
+        for (int i = 0; i < Tanks.ALL.size(); i++) {
+            TankDefinition def = Tanks.ALL.get(i);
             int cx = left + (i - this.carouselScroll) * (CARD_W + CARD_GAP);
-            if (cx + CARD_W < left - 4 || cx > right + 4) {
+            if (cx + CARD_W < left - 4 || cx > this.width + 4) {
                 continue;
             }
             boolean isSelected = def == this.selected;
-            boolean hovered = mouseX >= cx && mouseX < cx + CARD_W && mouseY >= y && mouseY < y + CARD_H;
+            boolean hovered = mouseX >= cx && mouseX < cx + CARD_W && mouseY >= cardsY && mouseY < cardsY + CARD_H;
 
-            int border = isSelected ? GOLD : (hovered ? 0xFF6B7268 : PANEL_BORDER);
-            g.fill(cx - 1, y - 1, cx + CARD_W + 1, y + CARD_H + 1, border);
-            g.fill(cx, y, cx + CARD_W, y + CARD_H, isSelected ? 0xE01C2620 : PANEL_BG_DARK);
+            // fond de carte (sous le char 3D)
+            PoseStack pose = g.pose();
+            pose.pushPose();
+            pose.translate(0.0F, 0.0F, -60.0F);
+            int border = isSelected ? GOLD : (hovered ? 0xFFC7A457 : PANEL_BORDER);
+            fillChamfer(g, cx - 1, cardsY - 1, cx + CARD_W + 1, cardsY + CARD_H + 1, 3, border);
+            fillChamfer(g, cx, cardsY, cx + CARD_W, cardsY + CARD_H, 3,
+                    isSelected ? 0xFF1A1710 : PANEL_BG_DARK);
+            pose.popPose();
 
-            // tier
-            g.drawString(this.font, TankDefinition.roman(def.tier()), cx + 5, y + 4, GOLD, true);
-            // classe
-            int badgeW = 22;
-            g.fill(cx + CARD_W - badgeW - 5, y + 4, cx + CARD_W - 5, y + 14, def.tankClass().color | 0xFF000000);
-            String cls = def.tankClass().shortLabel();
-            g.drawCenteredString(this.font, cls, cx + CARD_W - badgeW / 2 - 5, y + 5, 0xFF101210);
+            // rendu 3D du char dans la carte (vignette façon WoT)
+            renderTankModel(g, def, cx + CARD_W / 2.0F, cardsY + CARD_H - 5, 26.0F,
+                    -28.0F, 14.0F, -6.0F, 1.5F, -30.0F, 0.08F);
 
-            // bande de nation
-            g.fill(cx + 5, y + 17, cx + 9, y + 21, def.nation().color);
-            g.fill(cx + 5, y + 17, cx + 6, y + 21, def.nation().accent);
+            // tier + classe
+            g.drawString(this.font, TankDefinition.roman(def.tier()), cx + 4, cardsY + 3, GOLD, true);
+            int badgeW = 20;
+            g.fill(cx + CARD_W - badgeW - 4, cardsY + 3, cx + CARD_W - 4, cardsY + 12, def.tankClass().color | 0xFF000000);
+            g.drawCenteredString(this.font, def.tankClass().shortLabel(), cx + CARD_W - badgeW / 2 - 4, cardsY + 4, 0xFF101210);
 
-            // nom
-            String name = this.font.plainSubstrByWidth(def.name().getString(), CARD_W - 10);
-            g.drawString(this.font, name, cx + 5, y + CARD_H - 20, isSelected ? TEXT_MAIN : TEXT_DIM, true);
-            // vitesse
-            g.drawString(this.font, def.topSpeedKmh() + " km/h", cx + 5, y + CARD_H - 10, TEXT_DIM, true);
+            // liseré de nation + nom
+            g.fill(cx + 4, cardsY + 15, cx + 7, cardsY + 18, def.nation().color);
+            g.fill(cx + 4, cardsY + 15, cx + 5, cardsY + 18, def.nation().accent);
+            String name = this.font.plainSubstrByWidth(def.name().getString(), CARD_W - 8);
+            g.drawString(this.font, name, cx + 4, cardsY + CARD_H - 11, isSelected ? TEXT_MAIN : TEXT_DIM, true);
 
             if (isSelected) {
-                g.fill(cx, y - 4, cx + CARD_W, y - 2, GOLD);
+                g.fill(cx + 6, cardsY + CARD_H - 2, cx + CARD_W - 6, cardsY + CARD_H - 1, GOLD);
             }
         }
     }
 
     private void renderFooter(GuiGraphics g) {
-        g.drawString(this.font, "TanksCraft 0.1.0 — Minecraft 1.21.1 (NeoForge)", 8, this.height - 10, 0x80605E58, true);
+        g.drawString(this.font, "TanksCraft 0.1.0 — 1.21.1 NeoForge", 6, this.height - 10, 0x80605E58, true);
         String hint = Component.translatable("gui.tankscraft.hint").getString();
         int hintW = this.font.width(hint);
-        g.drawString(this.font, hint, this.width - hintW - 8, this.height - 10, 0x80706E64, true);
+        g.drawString(this.font, hint, this.width - hintW - 26, this.height - 10, 0x80706E64, true);
+    }
+
+    // ------------------------------------------------------------ rendu 3D des chars
+
+    /** Le char vedette, au centre-gauche de l'écran. */
+    private void renderTankPreview(GuiGraphics g, float partialTick) {
+        this.renderYaw += Mth.wrapDegrees(this.targetYaw - this.renderYaw) * 0.25F;
+        this.renderPitch += (this.targetPitch - this.renderPitch) * 0.25F;
+        this.renderZoom += (this.targetZoom - this.renderZoom) * 0.25F;
+
+        float anchorX = this.width * 0.36F;
+        float anchorY = this.height - STRIP_BOTTOM - 12;
+
+        // ombre au sol
+        float shadow = 0.55F * this.renderZoom;
+        int halfW = (int) (60 * shadow);
+        g.fill((int) anchorX - halfW, (int) anchorY - 2, (int) anchorX + halfW, (int) anchorY + 2, 0x50000000);
+        g.fill((int) anchorX - (int) (halfW * 0.8F), (int) anchorY - 1, (int) anchorX + (int) (halfW * 0.8F), (int) anchorY + 1, 0x50000000);
+
+        float ppb = (this.height * 0.5F * this.renderZoom) / 1.75F;
+        float time = (net.minecraft.Util.getMillis() % 100000L) / 1000.0F;
+        float turretYaw = Mth.sin(time * 0.6F) * 20.0F;
+        float gunPitch = 3.0F + Mth.sin(time * 0.4F) * 2.0F;
+        renderTankModel(g, this.selected, anchorX, anchorY, ppb,
+                this.renderYaw, this.renderPitch, turretYaw, gunPitch, 150.0F, 0.25F);
+    }
+
+    /**
+     * Rend un char façon InventoryScreen.renderEntityInInventory (1.21.1) :
+     * espace GUI (z inversé), flip écran, pitch caméra, orbite yaw autour du
+     * centre, flip modèle, pieds posés sur l'ancre. ModelPart divise par 16.
+     *
+     * @param zBase        décalage z de base (unités GUI) — 150 pour la scène,
+     *                     valeur négative pour rester sous l'UI dans les cartes
+     * @param zCompression écrase la profondeur pour rester dans le plan voulu
+     */
+    private static void renderTankModel(GuiGraphics g, TankDefinition def, float cx, float cyBottom,
+                                        float ppb, float yawDeg, float pitchDeg,
+                                        float turretYawDeg, float gunPitchDeg,
+                                        float zBase, float zCompression) {
+        PoseStack pose = g.pose();
+        pose.pushPose();
+        pose.translate(cx, cyBottom, zBase);
+        pose.scale(1.0F, 1.0F, zCompression);
+        pose.scale(ppb, ppb, -ppb);
+        pose.mulPose(Axis.ZP.rotationDegrees(180.0F));
+        pose.mulPose(Axis.XP.rotationDegrees(pitchDeg));
+        pose.translate(0.0F, ORBIT_CENTER_Y, 0.0F);
+        pose.mulPose(Axis.YP.rotationDegrees(-yawDeg));
+        pose.translate(0.0F, -ORBIT_CENTER_Y, 0.0F);
+        pose.scale(-1.0F, -1.0F, 1.0F);
+        pose.translate(0.0F, -1.501F, 0.0F);
+
+        ModelPart model = TankModels.bake(def);
+        TankModels.poseParts(model, turretYawDeg, gunPitchDeg);
+
+        Lighting.setupForEntityInInventory();
+        VertexConsumer consumer = g.bufferSource().getBuffer(RenderType.entityCutoutNoCull(def.texture()));
+        model.render(pose, consumer, 0xF000F0, OverlayTexture.NO_OVERLAY);
+        g.flush();
+        Lighting.setupFor3DItems();
+
+        pose.popPose();
+    }
+
+    // ------------------------------------------------------------ primitives chamfreinées
+
+    /** Rectangle à coins coupés (style angulaire WoT) : union de deux rects. */
+    private static void fillChamfer(GuiGraphics g, int x1, int y1, int x2, int y2, int c, int color) {
+        if (c <= 0) {
+            g.fill(x1, y1, x2, y2, color);
+            return;
+        }
+        g.fill(x1, y1 + c, x2, y2 - c, color); // bande horizontale
+        g.fill(x1 + c, y1, x2 - c, y2, color); // bande verticale
+    }
+
+    /** Panneau chamferiné avec fine bordure dorée. */
+    private static void panelChamfer(GuiGraphics g, int x1, int y1, int x2, int y2, int c) {
+        fillChamfer(g, x1, y1, x2, y2, c + 1, PANEL_BORDER);
+        fillChamfer(g, x1 + 1, y1 + 1, x2 - 1, y2 - 1, c, PANEL_BG);
     }
 
     // ------------------------------------------------------------ interactions
@@ -401,16 +436,17 @@ public class GarageScreen extends Screen {
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         // carte du carrousel ?
-        int y = this.carouselY();
-        int left = 34;
-        if (button == 0 && mouseY >= y && mouseY < y + CARD_H && mouseX >= left && mouseX <= this.carouselRight()) {
+        int cardsY = this.stripCardsY();
+        int left = STRIP_MARGIN;
+        if (button == 0 && mouseY >= cardsY && mouseY < cardsY + CARD_H && mouseX >= left && mouseX <= this.width - STRIP_MARGIN) {
             int index = (int) ((mouseX - left) / (CARD_W + CARD_GAP));
             int cx = left + index * (CARD_W + CARD_GAP);
-            if (mouseX - cx < CARD_W && index >= 0 && index < TANKS.size()) {
-                this.select(TANKS.get(index));
+            if (mouseX - cx < CARD_W && index >= 0 && index < Tanks.ALL.size()) {
+                this.select(Tanks.ALL.get(index));
                 return true;
             }
         }
+
         // démarrage du drag caméra hors widgets
         if (button == 0 && this.getChildAt(mouseX, mouseY) == null) {
             this.dragging = true;
@@ -441,8 +477,7 @@ public class GarageScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        int y = this.carouselY();
-        if (mouseY >= y - 8) {
+        if (mouseY >= this.stripCardsY() - 8) {
             this.scrollCarousel(scrollY > 0 ? -1 : 1);
         } else {
             this.targetZoom = Mth.clamp(this.targetZoom * (scrollY > 0 ? 1.12F : 0.89F), 0.55F, 1.9F);
@@ -458,16 +493,12 @@ public class GarageScreen extends Screen {
     }
 
     private void scrollCarousel(int delta) {
-        this.carouselScroll = Mth.clamp(this.carouselScroll + delta, 0, TANKS.size() - 1);
-    }
-
-    private void clampCarouselScroll() {
-        this.carouselScroll = Mth.clamp(this.carouselScroll, 0, TANKS.size() - 1);
+        this.carouselScroll = Mth.clamp(this.carouselScroll + delta, 0, Tanks.ALL.size() - 1);
     }
 
     private void ensureSelectedVisible() {
-        int index = TANKS.indexOf(this.selected);
-        if (index < this.carouselScroll) {
+        int index = Tanks.ALL.indexOf(this.selected);
+        if (index >= 0 && index < this.carouselScroll) {
             this.carouselScroll = index;
         }
     }
@@ -493,7 +524,7 @@ public class GarageScreen extends Screen {
         return sb.reverse().toString();
     }
 
-    /** Le grand bouton rouge "Au combat !". */
+    /** Le grand bouton rouge « Au combat ! », chamferiné, bordure or, pulsant. */
     private class BattleButton extends Button {
         BattleButton(int x, int y, int width, int height, Component message, OnPress onPress) {
             super(x, y, width, height, message, onPress, DEFAULT_NARRATION);
@@ -505,20 +536,22 @@ public class GarageScreen extends Screen {
             boolean hovered = this.isHovered();
             float pulse = 0.5F + 0.5F * Mth.sin(net.minecraft.Util.getMillis() / 260.0F);
 
-            int top = hovered ? BATTLE_ORANGE : BATTLE_RED;
-            int bottom = hovered ? 0xFFC43D0B : 0xFF8F1D16;
-            if (!hovered) {
-                // léger halo pulsé quand prêt
-                top = 0xFF000000 | mixColor(BATTLE_RED, BATTLE_ORANGE, pulse * 0.35F);
-            }
+            int top = hovered ? BATTLE_HOVER : mixColor(BATTLE_RED, BATTLE_HOVER, pulse * 0.30F);
+            int bottom = hovered ? 0xFFB23E09 : mixColor(BATTLE_RED_DARK, 0xFFB23E09, pulse * 0.30F);
 
-            g.fillGradient(this.getX(), this.getY(), this.getX() + this.width, this.getY() + this.height, top, bottom);
-            g.fill(this.getX(), this.getY(), this.getX() + this.width, this.getY() + 1, 0xFF4A2018);
-            g.fill(this.getX(), this.getY() + this.height - 1, this.getX() + this.width, this.getY() + this.height, 0xFF000000 | 0x4A2018);
+            int x1 = this.getX();
+            int y1 = this.getY();
+            int x2 = x1 + this.width;
+            int y2 = y1 + this.height;
 
-            g.drawCenteredString(mc.font, this.getMessage(), this.getX() + this.width / 2, this.getY() + this.height / 2 - 9, 0xFFFFF3E0);
+            // bordure or, anneau rouge, corps en dégradé
+            fillChamfer(g, x1, y1, x2, y2, 4, GOLD_DIM);
+            fillChamfer(g, x1 + 1, y1 + 1, x2 - 1, y2 - 1, 4, top);
+            g.fillGradient(x1 + 4, y1 + 4, x2 - 4, y2 - 4, top, bottom);
+
+            g.drawCenteredString(mc.font, this.getMessage(), x1 + this.width / 2, y1 + this.height / 2 - 9, 0xFFFFF3E0);
             g.drawCenteredString(mc.font, Component.translatable("gui.tankscraft.battle_sub"),
-                    this.getX() + this.width / 2, this.getY() + this.height / 2 + 3, 0x90FFE8CC);
+                    x1 + this.width / 2, y1 + this.height / 2 + 3, 0x90FFE8CC);
         }
     }
 
