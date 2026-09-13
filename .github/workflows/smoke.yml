@@ -1,6 +1,14 @@
 name: Smoke test
 
+# workflow_dispatch n'existe que sur la branche par défaut ; on utilise donc
+# un déclencheur push avec filtre de chemin : modifier smoke.trigger (ou ce
+# fichier) déclenche le smoke test sur la branche poussée.
 on:
+  push:
+    branches: ["**"]
+    paths:
+      - "smoke.trigger"
+      - ".github/workflows/smoke.yml"
   workflow_dispatch:
 
 concurrency:
@@ -43,7 +51,7 @@ jobs:
           git init -q .
           cp "$GITHUB_WORKSPACE/build/autoshot.png" . 2>/dev/null || echo "MANQUANT" > autoshot.png.manquant
           tail -c 200000 "$GITHUB_WORKSPACE/client.log" > client.log 2>/dev/null || true
-          grep -iE "TanksCraft|tankscraft|crash|FATAL|ERROR" "$GITHUB_WORKSPACE/client.log" | tail -100 > client-interesting.log 2>/dev/null || true
+          grep -iE "TanksCraft|tankscraft|crash|FATAL|ERROR|GLFW|Exception" "$GITHUB_WORKSPACE/client.log" | tail -150 > client-interesting.log 2>/dev/null || true
           git add -A
           git commit -qm "screenshot $GITHUB_SHA"
           git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" HEAD:refs/heads/ci-shots
@@ -63,7 +71,7 @@ jobs:
         with:
           cache-read-only: false
 
-      - name: Run server for 3 minutes
+      - name: Run server for a few minutes
         run: |
           mkdir -p run && echo "eula=true" > run/eula.txt
           timeout 420 ./gradlew runServer --no-daemon 2>&1 | tee server.log || true
